@@ -881,7 +881,448 @@ class ViewController: UIViewController {
             }
         }
         
-        //属性观察器
+        //属性观察器  监控和响应属性值的变化，每次属性被设置值的时候都会调用属性观察器，即使新值和当前值相同的时候也不例外。
+        //你可以为除了延迟存储属性之外的其他存储属性添加属性观察器，也可以通过重写属性的方式为继承的属性（包括存储属性和计算属性）添加属性观察器。你不必为非重写的计算属性添加属性观察器，因为可以通过它的setter直接监控和响应值的变化。
+        //可以为属性添加如下的一个或全部观察器：
+        /**
+         willSet 在新的值被设置之前调用
+         didSet 在新的值被设置之后立即调用
+         */
+        //willSet 观察器会将新的属性值作为常量参数传入，在 willSet 的实现代码中可以为这个参数指定一个名称，如果不指定则参数仍然可用，这时使用默认名称 newValue 表示。
+        //同样，didSet 观察器会将旧的属性值作为参数传入，可以为该参数命名或者使用默认参数名 oldValue。如果在 didSet 方法中再次对该属性赋值，那么新值会覆盖旧的值。
+        //注意：父类的属性在子类的构造器中被赋值时，它在父类中的 willSet 和 didSet 观察器会被调用，随后才会调用子类的观察器。在父类初始化方法调用之前，子类给属性赋值时，观察器不会被调用。
+        class StepCounter {
+            var totalSteps: Int = 0 {
+                willSet(newTotalSteps) {
+                    print("About to set totalSteps to \(newTotalSteps)")
+                }
+                didSet(oldTotalSteps) {
+                    print("Added \(totalSteps - oldTotalSteps) steps")
+                }
+            }
+        }
+        let stepCounter = StepCounter()
+        stepCounter.totalSteps = 300
+        stepCounter.totalSteps = 360
+        stepCounter.totalSteps = 360
+        
+        //全局变量和局部变量
+        //计算属性和属性观察器所描述的功能也可以用于全局变量和局部变量。全局变量在函数、方法、闭包或任何类型之外定义的变量。局部变量是在函数、方法或闭包内部定义的变量。  它们都是存储型变量，跟存储属性类似，它为特定类型的值提供存储空间，并允许读取和写入。 另外，在全局或局部范围都可以定义计算型变量和为存储变量定义观察器。计算型变量跟计算属性一样，返回一个计算结果而不是存储值，声明格式也完全一样。
+        //注意：全局的常量或变量都是延迟计算的，跟延迟存储属性相似，不同的地方在于，全局的常量或变量不需要标记 lazy 修饰符。  局部范围的常量或变量从不延迟计算。
+        
+        //类型属性
+        //实例属性属于一个特定类型的实例，每创建一个实例，实例都拥有属于自己的一套属性值，实例之间的属性相互独立。 也可以为类型本身定义属性，无论创建了多少个该类型的实例，这些属性都只有唯一一份。这种属性就是类型属性。
+        //类型属性用于定义某个类型所有实例共享的数据，比如所有实例都能用的一个常量（就像C语言中的静态常量），或者所有实例都能方为的一个变量（就像C语言中的静态变量）。
+        //存储型类型属性可以是变量或常量，计算型类型属性跟实例的计算型属性一样只能定义成变量属性。
+        //注意：跟实例的存储型属性不同，必须给存储型类型属性指定默认值，因为类型本身没有构造器，也就无法在初始化过程中使用构造器给类型属性赋值。  存储型类型属性是延迟初始化的，它们只有在第一次被访问的时候才会被初始化。即使它们被多个线程同时访问，系统也保证只会对其进行一次初始化，并且不需要对其使用 lazy 修饰符。
+        //类型属性语法  在 C 或 Objective-C中，与某个类型关联的静态常量和静态变量，是作为全局（global）静态变量定义的。但是在 Swift 中，类型属性是作为类型定义的一部分写在类型最外层的花括号内，因此它的作用范围也就在类型支持的范围内。  使用关键字 static 来定义类型属性。在为类定义计算型类型属性时，可以改用关键字 class 来支持子类对父类的实现进行重写。
+        
+        struct SomeStructure {
+            static var storedTypeProperty = "Some value."
+            static var computedTypeProperty: Int {
+                return 1
+            }
+        }
+        
+        enum StaticSomeEnumeration {
+            static var storedTypeProperty = "Some value."
+            static var computedTypeProperty: Int {
+                return 6
+            }
+        }
+        class SomeStaticClass {
+            static var storedTypeProperty = "Some value."
+            static var computedTypeProperty: Int {
+                return 27
+            }
+            class var overrideComputedTypeProperty: Int {
+                return 107
+            }
+        }
+        //获取和设置类型属性的值  跟实例属性一样，类型属性也是通过点运算符来访问。但是，类型属性是通过类型本身来访问，而不是通过实例。
+        print(SomeStructure.storedTypeProperty)
+        SomeStructure.storedTypeProperty = "Another value."
+        print(SomeStructure.storedTypeProperty)
+        print(StaticSomeEnumeration.computedTypeProperty)
+        print(SomeStaticClass.overrideComputedTypeProperty)
+        
+        struct AudioChannel {
+            static let thresholdLevel = 10
+            static var maxInputLevelForAllChannels = 0
+            var currentLevel: Int = 0 {
+                didSet {
+                    if currentLevel > AudioChannel.thresholdLevel {
+                        currentLevel = AudioChannel.thresholdLevel
+                    }
+                    if currentLevel > AudioChannel.maxInputLevelForAllChannels {
+                        AudioChannel.maxInputLevelForAllChannels = currentLevel
+                    }
+                }
+            }
+        }
+        
+        var leftChannel = AudioChannel()
+        var rightChannel = AudioChannel()
+        leftChannel.currentLevel = 7
+        print(leftChannel.currentLevel)
+        print(AudioChannel.maxInputLevelForAllChannels)
+        
+        rightChannel.currentLevel = 11
+        print(rightChannel.currentLevel)
+        print(AudioChannel.maxInputLevelForAllChannels)
+        
+        //方法  实例方法、类型方法
+        //方法是与某些特定类型相关联的函数。类、结构体、枚举都可以定义实例方法；实例方法为给定类型的实例封装了具体的任务与功能。类、结构体、枚举也可以定义类型方法；类型方法与类型本身相关联。类型方法与Objective-C中的类方法相似。
+        //结构体和枚举能够定义方法是Swift与C/Objective-C的主要区别之一。在Objective-C中，类是唯一能定义方法的类型。但在Swift中，你不仅能选择是否要定义一个类/结构体/枚举，还能灵活地在你创建的类型（类/结构体/枚举）上定义方法。
+        //实例方法是属于某个特定类、结构体或者枚举类型实例的方法。实例方法的语法与函数完全一致。 实例方法要写在它所属的类型的前后大括号之间。 实例方法能够隐式访问它所属类型的所有的其他实例方法与属性。实例方法只能被它所属的类的某个特定实例调用。实例方法不能脱离于现存的实例而被调用。
+        class Counter {
+            var count = 0
+            func increment() {
+//                count += 1
+                self.count += 1
+            }
+            func increment(by amount: Int) {
+                count += amount
+            }
+            func reset() {
+                count = 0
+            }
+        }
+        let counter = Counter()
+        counter.increment()
+        counter.increment(by: 5)
+        counter.reset()
+
+        //self属性 类型的每一个实例都有一个隐含属性叫做 self， self 完全等同于该实例本身。你可以在一个实例的实例方法中使用这个隐含的 self 属性来引用当前实例。 实际上，你不必在你的代码里面经常写 self。 无论何时，只要在一个方法中使用一个已知的属性或者方法名称，如果你没有明确地写 self，Swift假定你是指当前实例的属性或者方法。 使用这条规则的主要场景是实例方法的某个参数名称与实例的某个属性名称相同的时候。这种情况下，参数名称享有优先权，并且在引用属性时必须使用一种更严格的方式。这时你可以使用 self 属性来区分参数名称和属性名称。
+        
+        //在实例方法中修改值类型
+        //结构体和枚举是值类型。默认情况下，值类型的属性不能在它的实例方法中被修改。
+        //但是，如果你确实需要在某个特定的方法中修改结构体或者枚举的属性，你可以为这个方法选择 可变（mutating） 行为，然后就可以从其方法内部改变它的属性；并且这个方法做的任何改变都会在方法执行结束时写回到原始结构中。方法还可以给它隐含的 self 属性赋予一个全新的实例，这个新实例在方法结束时会替换现存实例。
+        //要使用 可变 方法，将关键字 mutating 放到方法的 func 关键字之前。
+        struct MutatPoint {
+            var x = 0.0, y = 0.0
+            mutating func moveByX(_ x: Double, y deltaY: Double) {
+//                self.x += x
+//                y += deltaY
+                //在可变方法中给 self 赋值
+                self = MutatPoint(x: self.x + x, y: y + deltaY)
+            }
+        }
+        
+        var another1Point = MutatPoint(x: 1.0, y: 1.0)
+        another1Point.moveByX(4, y: 8)
+        print("The point is now at \(another1Point.x, another1Point.y)")
+        
+        enum TriStateSwitch {
+            case Off, Low, High
+            mutating func next() {
+                switch self {
+                case .Off:
+                    self = .Low
+                case .Low:
+                    self = .High
+                case .High:
+                    self = .Off
+                }
+            }
+        }
+        var ovenLight = TriStateSwitch.Off
+        print(ovenLight)
+        ovenLight.next()
+        print(ovenLight)
+        ovenLight.next()
+        print(ovenLight)
+        
+        //类型方法  实例方法是被某个类型的实例调用的方法。你也可以定义在类型本身上调用的方法，这种方法就叫做类型方法。 在方法的 func 关键字之前加上关键字 static，来指定类型方法。类还可以用关键字 class 来允许子类重写父类的方法实现。
+        //注意：在 Objective-C中，你只能为 Objective-C 的类类型定义类型方法。在 Swift 中，你可以为所有的类、结构体和枚举定义类型方法。每一个类型方法都被它所支持的类型显式包含。  类型方法和实例方法一样用点语法调用。但是，你是在类型上调用这个方法，而不是在实例上调用。
+        class AnotherClass {
+            class func someTypeMethod() {
+                //在这里实现类型方法
+            }
+        }
+        AnotherClass.someTypeMethod()
+        // 在类型方法体（body）中，self 指向这个类型本身，而不是类型的某个实例。这意味着你可以用 self 来消除类型属性和类型方法参数之间的歧义。
+        //一般来说，在类型方法的方法体中，任何未限定的方法和属性名称，可以被本类中其他的类型方法和类型属性引用。一个类型方法可以直接通过类型方法的名称调用本类中的其它类型方法，而无需在方法名称前面加上类型名称。类似地，在结构体和枚举中，也能够直接通过类型属性的名称访问本类中的类型属性，而不需要前面加上类型名称。
+        struct LevelTracker {
+            static var highestUnlockedLevel = 1
+            var currentLevel = 1
+            
+            static func unlock(_ level: Int) {
+                if level > highestUnlockedLevel {
+                    highestUnlockedLevel = level
+                }
+            }
+            static func isUnlocked(_ level: Int) -> Bool {
+                return level <= highestUnlockedLevel
+            }
+            
+            @discardableResult //允许在调用advance(to:)时忽略返回值，不会产生编译警告 所以函数被标注为@discardableResult
+            mutating func advance(to level: Int) -> Bool {
+                if LevelTracker.isUnlocked(level) {
+                    currentLevel = level
+                    return true
+                } else {
+                    return false
+                }
+            }
+        }
+        
+        class Player {
+            var tracker = LevelTracker()
+            let playerName: String
+            func complete(level: Int) {
+                LevelTracker.unlock(level + 1)
+                tracker.advance(to: level + 1)
+            }
+            init(name: String) {
+                playerName = name
+            }
+        }
+        
+        var player = Player(name: "Argyrios")
+        player.complete(level: 1)
+        print("highest unlocked level is now \(LevelTracker.highestUnlockedLevel)")
+        
+        player = Player(name: "Beto")
+        if player.tracker.advance(to: 6) {
+            print("player is now on level 6")
+        } else {
+            print("level 6 has not yet been unlocked")
+        }
+        
+        //下标 可以定义在类、结构体和枚举中，是访问集合、列表或序列中元素的快捷方式。可以使用下标的索引，设置和获取值，而不需要再调用对应的存取方法。
+        //下标语法 类似于实例方法语法和计算型属性语法的混合。与定义实例方法类型，定义下标使用 subscript 关键字，指定一个或多个输入参数和返回类型；与实例方法不同的是，下标可以设定为读写或只读。这种行为由 getter 和 setter 实现，有点类似计算型属性：
+        /**  读写
+        subscript(index: Int) -> Int {
+            get {
+                //返回一个适当的 Int 类型的值
+            }
+            
+            set(newValue) {
+                //执行适当的赋值操作
+            }
+        }
+        */
+        /** 如同只读计算属性，可以省略只读下标的 get 关键字：
+        subscript(index: Int) -> Int {
+            //返回一个适当的 Int 类型的值
+        }
+        */
+        
+        struct TimesTable {
+            let multiplier: Int
+            subscript(index: Int) -> Int {
+                return multiplier * index
+            }
+        }
+        
+        let thresTimesTable = TimesTable(multiplier: 3)
+        print("six times three is \(thresTimesTable[6])")
+        
+        var numberOfLegs = ["spider": 8, "ant": 6, "cat": 4]
+        print(numberOfLegs)
+        numberOfLegs["bird"] = 2
+        numberOfLegs["cat"] = nil
+        print(numberOfLegs)
+        
+        //下标选项  下标可以接受任意数量的入参，并且这些入参可以是任意类型。下标的返回值也可以是任意类型。下标可以使用变量参数和可变参数，但不能使用输入输出参数，也不能给参数设置默认值。
+        //一个类和结构体可以根据自身需要提供多个下标实现，使用下标时将通过入参的数量和类型进行区分，自动匹配合适的下标，这就是下标的重载。
+        struct Matrix {
+            let rows: Int, columns: Int
+            var grid: [Double]
+            init(rows: Int, columns: Int) {
+                self.rows = rows
+                self.columns = columns
+                grid = Array(repeating: 0.0, count: rows * columns)
+            }
+            
+            func indexIsValid(row: Int, column: Int) -> Bool {
+                return row >= 0 && row < rows && column >= 0 && column < columns
+            }
+            subscript(row: Int, column: Int) -> Double {
+                get {
+                    assert(indexIsValid(row: row, column: column), "Index out of range")
+                    return grid[(row * columns) + column]
+                }
+                set {
+                    assert(indexIsValid(row: row, column: column), "Index out of range")
+                    grid[(row * columns) + column] = newValue
+                }
+            }
+        }
+        var matrix = Matrix(rows: 2, columns: 2)
+        matrix[0, 1] = 1.5
+//        let someValue = matrix[2, 2]//断言将会触发
+        
+        //继承  在 Swift 中，类可以调用和访问超类的方法、属性和下标，并且可以重写这些方法，属性和下标来优化或修改它们的行为。Swift 会检查你的重写定义在超类中是否有匹配的定义，以此确保你的重写行为是正确的。  可以为类中继承来的属性添加属性观察器，这样一来，当属性值改变时，类就会被通知到。可以为任何属性添加属性观察器，无论它原本被定义为存储型属性还是计算型属性。
+        
+        class Vehicle {
+            var currentSpeed = 0.0
+            var description: String {
+                return "traveling at \(currentSpeed) miles per hour"
+            }
+            func makeNoise() {
+                //什么也不做-因为车辆不一定会有噪音
+            }
+        }
+        // Bicycle 是 Vehicle 的子类
+        class Bicycle: Vehicle {
+            var hasBasket = false
+        }
+        let bicycle = Bicycle()
+        bicycle.hasBasket = true
+        bicycle.currentSpeed = 15.0
+        print("Bicycle: \(bicycle.description)")
+        
+        class Tandem: Bicycle {
+            var currentNumberOfPassengers = 0
+        }
+        
+        let tandem = Tandem()
+        tandem.hasBasket = true
+        tandem.currentNumberOfPassengers = 2
+        tandem.currentSpeed = 22
+        print("Tandem: \(tandem.description)")
+        
+        //重写 子类可以为继承来的实现方法，类方法，实例属性，或下标提供自己定制的实现。我们把这种行为叫重写。
+        //如果要重写某个特性，你需要在重写定义的前面加上 override 关键字。这么做，你就表明了你是想提供一个重写版本，而非错误地提供了一个相同的定义。意外的重写行为可能会导致不可预知的错误，任何缺少 override 关键字的重写都会在编译时被诊断为错误。
+        //override 关键字会提醒 Swift 编译器去检查该类的超类（或其中一个父类）是否有匹配重写版本的声明。这个检查可以确保你的重写定义是正确的。
+        //访问超类的方法，属性及下标  你可以通过使用 super 前缀来访问超类版本的方法，属性或下标：
+        /**
+         在方法 someMethod() 的重写实现中，可以通过 super.someMethod() 来调用超类版本的 someMethod() 方法。
+         在属性 someProperty 的 getter 或 setter 的重写实现中，可以通过 super.someProperty 来访问超类版本的 someProperty 属性。
+         在下标的重写实现中，可以通过 super[someIndex] 来访问超类版本中的相同下标。
+         */
+        
+        //重写方法 在子类中，你可以重写继承来的实现方法或类方法，提供一个定制或替代的方法实现。
+        class Train: Vehicle {
+            override func makeNoise() {
+                print("Choo Choo")
+            }
+        }
+        
+        //重写属性 你可以重写继承来的实例属性或类型属性，提供自己定制的 getter 和 setter，或添加属性观察器使重写的属性可以观察属性值什么时候发生改变。
+        //注意： 如果你在重写属性中提供了 setter，那么你也一定要提供 getter。如果你不想在重写版本中的 getter 里修改继承来的属性值，你可以直接通过 super.someProperty 来返回继承来的值，其中 someProperty 是你要重写的属性的名字。
+        class Car: Vehicle {
+            var gear = 1
+            override var description: String {
+                return super.description + " in gear \(gear)"
+            }
+        }
+        let car = Car()
+        car.currentSpeed = 25.0
+        car.gear = 3
+        print("Car: \(car.description)")
+        
+        //重写属性观察器 你可以通过重写属性为一个继承来的属性添加属性观察器。这样一来，当继承来的属性值发生改变时，你就会被通知到，无论那个属性原本是如何实现的。
+        //注意：你不可以为继承来的常量存储型属性或继承来的只读计算型属性添加属性观察器。这些属性的值是不可以被设置的，所以，为它们提供willSet或didSet实现是不恰当。此外还要注意，你不可以同事提供重写的setter和重写的属性观察器。如果你想观察属性值的变化，并且你已经为那个属性提供了定制的 setter，那么你在 setter 中就可以观察到任何值变化了。
+        class AutomaticCar: Car {
+            override var currentSpeed: Double {
+                didSet {
+                    gear = Int(currentSpeed / 10.0) + 1
+                }
+            }
+        }
+        let automatic = AutomaticCar()
+        automatic.currentSpeed = 35.0
+        print("AutomaticCar: \(automatic.description)")
+        
+        //防止重写 你可以通过把方法、属性或下标标记为 final 来防止它们被重写，只需要在声明关键字前加上 final 修饰符即可（例如： final var， final func， final class func， 以及 final subscript）。
+        //任何试图对带有 final 标记的方法、属性或下标进行重写，都会在编译时会报错。在类扩展中的方法，属性或下标也可以在扩展的定义里标记为 final 的。
+        //你可以通过在关键字 class 前添加 final 修饰符 （final class）来将整个类标记为 final 的。这样的类是不可被继承的，试图继承这样的类会导致编译报错。
+        
+        
+        //构造过程 是使用类、结构体或枚举类型的实例之前的准备过程。在新实例可用前必须执行这个过程，具体操作包括设置实例中每个存储型属性的初始值和执行其他必须的设置或初始化工作。
+        //构造器 通过定义构造器来实现构造过程，就像用了创建特定类型新实例的特殊方法。与Objective-C中的构造器不同，Swift的构造器无需返回值，它们的主要任务是保证新实例在第一次使用前完成正确的初始化。
+        //存储属性的初始赋值 类和结构体在创建实例时，必须为所有存储型属性设置合适的初始值。存储型属性的值不能处于一个未知的状态。
+        //注意：当你为存储型属性设置默认值或者在构造器中为其赋值时，它们的值是被直接设置的，不会触发任何属性观察器。
+        
+        struct Color {
+            let red, green, blue: Double
+            init(red: Double, green: Double, blue: Double) {
+                self.red = red
+                self.green = green
+                self.blue = blue
+            }
+            init(white: Double) {
+                red = white
+                green = white
+                blue = white
+            }
+        }
+        
+        _ = Color(red: 1.0, green: 0.2, blue: 0.4)
+        _ = Color(white: 0.3)
+        
+        //可选属性类型  如果你定制的类型包含一个逻辑上允许取值为空的存储型属性 -- 无论是因为它无法在初始化时赋值，还是因为它在之后某个时间点可以赋值为空 -- 你都需要将它定义为 可选类型。可选类型的属性将自动初始化为 nil，表示这个属性是有意在初始化时设置为空的。
+        class SurveyQuestion {
+            var text: String
+            var response: String?
+            init(text: String) {
+                self.text = text
+            }
+            func ask() {
+                print(text)
+            }
+        }
+        
+        let cheeseQuestion = SurveyQuestion(text: "Do you like cheese?")
+        cheeseQuestion.ask()
+        cheeseQuestion.response = "Yes, I do like cheese."
+        
+        //构造过程中常量属性的赋值 对于类的实例来说，它的常量属性只能在定义它的类的构造过程中修改；不能在子类中修改。
+        //结构体的逐一成员构造器 逐一成员构造器是用来初始化结构体新实例里成员属性的快捷方法。我们在调用逐一成员构造器时，通过与成员属性名相同的参数名进行传值来完成对成员属性的初始赋值。
+        //值类型的构造器代理  构造器可以通过调用其它构造器来完成实例的部分构造过程。这一过程称为构造器代理，它能避免多个构造器间的代码重复。
+        //构造器代理的实现规则和形式在值类型和类类型中有所不同。值类型（结构体和枚举类型）不支持继承，所以构造器代理的过程相对简单，因为它们只能代理给自己的其它构造器。类则不同，它可以继承自其它类，这意味着类有责任保证其所有继承的存储型属性在构造时也能正确的初始化。
+        //对于值类型，你可以使用 self.init 在自定义的构造器中引用相同类型中的其它构造器。并且你只能在构造器内部调用 self.init。
+        //请注意，如果你为某个值类型定义了一个自定义的构造器，你将无法访问到默认构造器（如果是结构体，还将无法访问逐一成员构造器）。这种限制可以防止你为值类型增加了一个额外的且十分复杂的构造器之后，仍然有人错误的使用自动生成构造器。  如果你希望默认构造器、逐一成员构造器以及你自己的自定义构造器都能用来创建实例，可以将自定义的构造器写到扩展（extension）中，而不是写在值类型的原始定义中。
+        struct AnotherSize {
+            var width = 0.0, height = 0.0
+        }
+        struct AnotherPoint {
+            var x = 0.0, y = 0.0
+        }
+        
+        struct AnotherRect {
+            var origin = AnotherPoint()
+            var size = AnotherSize()
+            init() {}
+            
+            init(origin: AnotherPoint, size: AnotherSize) {
+                self.origin = origin
+                self.size = size
+            }
+            
+            init(center: AnotherPoint, size: AnotherSize) {
+                let originX = center.x - (size.width / 2)
+                let originY = center.y - (size.height / 2)
+                self.init(origin: AnotherPoint(x: originX, y: originY), size: size)
+            }
+        }
+        
+        //类的继承和构造过程  类里面的所有存储型属性 -- 包括所有继承自父类的属性 -- 都必须在构造过程中设置初始值。Swift为类类型提供了两种构造器来确保实例中所有存储型属性都能获取初始值，它们分别是指定构造器和便利构造器。
+        //指定构造器是类中最主要的构造器。一个指定构造器将初始化类中提供的所有属性，并根据父类链往上调用父类合适的构造器来实现父类的初始化。 普遍的一个类拥有一个指定构造器。指定构造器字初始化的地方通过“管道”将初始化过程持续到父类链。 每一个类都必须至少拥有一个指定构造器。
+        /**
+         指定构造器
+        init(parameters) {
+            statements
+        }
+        
+         //便利构造器语法
+        convenience init(parameters) {
+            statements
+        }
+        */
+        //类的构造器代理规则
+        /**
+         规则1 指定构造器必须调用其直接父类的指定构造器
+         规则2 便利构造器必须调用同类中定义的其它构造器
+         规则3 便利构造器最后必须调用指定构造器
+         
+         一个更方便记忆的方法是：
+         指定构造器必须总是向上代理
+         便利构造器必须总是横向代理
+         */
         
         
         struct Order: Codable {
